@@ -4,6 +4,8 @@ const bodyParser = require('body-parser');
 
 const app = express();
 const port = 80;
+let __dirname = '/'
+const wifiConfigPath = path.join(__dirname, 'wifi_config.json');
 
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -12,6 +14,27 @@ WiFiControl.init({
     debug: true
 });
 
+
+// Check if WiFi credentials are saved, and if so, auto-connect on startup
+if (fs.existsSync(wifiConfigPath)) {
+    const wifiConfig = JSON.parse(fs.readFileSync(wifiConfigPath, 'utf8'));
+
+    WiFiControl.connectToAP(wifiConfig, (error, response) => {
+        if (error) {
+            console.error('Error connecting to saved WiFi:', error);
+        } else {
+            console.log('Connected to saved WiFi:', response);
+        }
+    });
+}else{
+
+// Create an Access Point
+WiFiControl.addAP({
+    ssid: 'Cannalog_cam_v1', // Set your desired SSID
+    password: 'Cannalog' // Set your desired password
+});
+
+}
 
 
 app.get('/', (req, res) => {
