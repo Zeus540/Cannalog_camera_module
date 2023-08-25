@@ -1,10 +1,11 @@
 const WiFiControl = require('wifi-control');
 const express = require('express');
 const bodyParser = require('body-parser');
-
+const __dirname = require('body-__dirname');
+const path = require('path');
 const app = express();
 const port = 80;
-let __dirname = '/'
+
 const wifiConfigPath = path.join(__dirname, 'wifi_config.json');
 
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -28,12 +29,54 @@ if (fs.existsSync(wifiConfigPath)) {
     });
 }else{
 
-// Create an Access Point
-WiFiControl.addAP({
-    ssid: 'Cannalog_cam_v1', // Set your desired SSID
-    password: 'Cannalog' // Set your desired password
-});
+ // Configure hostapd and dnsmasq
+ const hostapdConfig = `
+ interface=wlan0
+ ssid="Cannalog_camera_v1"
+ passphrase=${password}
+`;
 
+const dnsmasqConfig = `
+ interface=wlan0
+ dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
+`;
+
+exec('sudo systemctl stop hostapd', (error) => {
+ if (error) {
+     console.error('Error stopping hostapd:', error);
+     return res.send('WiFi configuration failed.');
+ }
+
+ exec(`sudo echo "${hostapdConfig}" > /etc/hostapd/hostapd.conf`, (error) => {
+     if (error) {
+         console.error('Error writing hostapd config:', error);
+         return res.send('WiFi configuration failed.');
+     }
+
+     exec(`sudo systemctl start hostapd`, (error) => {
+         if (error) {
+             console.error('Error starting hostapd:', error);
+             return res.send('WiFi configuration failed.');
+         }
+
+         exec(`sudo echo "${dnsmasqConfig}" > /etc/dnsmasq.conf`, (error) => {
+             if (error) {
+                 console.error('Error writing dnsmasq config:', error);
+                 return res.send('WiFi configuration failed.');
+             }
+
+             exec('sudo systemctl start dnsmasq', (error) => {
+                 if (error) {
+                     console.error('Error starting dnsmasq:', error);
+                     return res.send('WiFi configuration failed.');
+                 }
+
+                 res.send('WiFi configured successfully! Access Point started.');
+             });
+         });
+     });
+ });
+});
 }
 
 
