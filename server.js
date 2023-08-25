@@ -1,10 +1,9 @@
-const AccessPoint = require('node-ap');
 const WiFiControl = require('wifi-control');
 const express = require('express');
 const bodyParser = require('body-parser');
 
 const app = express();
-const port = 3000;
+const port = 80;
 
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -13,19 +12,7 @@ WiFiControl.init({
     debug: true
 });
 
-// Create an instance of the AccessPoint class
-const ap = new AccessPoint({
-    ssid: 'YourAPSSID',
-    password: 'YourAPPassword',
-    channel: 6
-});
 
-// Start the access point
-ap.start().then(() => {
-    console.log('Access Point started');
-}).catch((error) => {
-    console.error('Error starting Access Point:', error);
-});
 
 app.get('/', (req, res) => {
     res.send(`
@@ -50,7 +37,15 @@ app.post('/configure', (req, res) => {
             res.send('WiFi configuration failed.');
         } else {
             console.log('Connected to WiFi:', response);
-            res.send('WiFi configured successfully!');
+
+            // Save the WiFi details to a JSON file
+            const wifiConfig = {
+                ssid: ssid,
+                password: password
+            };
+            fs.writeFileSync(wifiConfigPath, JSON.stringify(wifiConfig));
+
+            res.send('WiFi configured successfully! Credentials saved.');
         }
     });
 });
